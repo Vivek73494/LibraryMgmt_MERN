@@ -12,7 +12,7 @@ const IssueBook = ({ setActiveTab }) => {
     studentName: '',
     studentRollNumber: '',
     bookId: '',
-    issueDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+    issueDate: new Date().toISOString().split('T')[0]
   });
 
   const loadBooks = async () => {
@@ -25,7 +25,7 @@ const IssueBook = ({ setActiveTab }) => {
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err.response?.data?.message || 'Failed to load books catalog',
+        message: err.response?.data?.message || 'Failed to load books catalog'
       });
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ const IssueBook = ({ setActiveTab }) => {
     if (selectedBook.availableQuantity <= 0) {
       setFeedback({
         type: 'error',
-        message: `Cannot issue "${selectedBook.title}". No copies are currently available in the library!`,
+        message: `Cannot issue "${selectedBook.title}". No copies are currently available in the library.`
       });
       return;
     }
@@ -70,22 +70,20 @@ const IssueBook = ({ setActiveTab }) => {
       if (res.success) {
         setFeedback({
           type: 'success',
-          message: `Book "${selectedBook.title}" issued successfully to ${formData.studentName} (Roll No: ${formData.studentRollNumber})!`,
+          message: `Book "${selectedBook.title}" issued successfully to ${formData.studentName} (${formData.studentRollNumber})!`
         });
-        // Reset form
         setFormData({
           studentName: '',
           studentRollNumber: '',
           bookId: '',
-          issueDate: new Date().toISOString().split('T')[0],
+          issueDate: new Date().toISOString().split('T')[0]
         });
-        // Refresh books list to reflect updated available quantity
         loadBooks();
       }
     } catch (err) {
       setFeedback({
         type: 'error',
-        message: err.response?.data?.message || 'Failed to issue book',
+        message: err.response?.data?.message || 'Failed to issue book'
       });
     } finally {
       setSubmitting(false);
@@ -146,11 +144,11 @@ const IssueBook = ({ setActiveTab }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="bookId">Select Book to Issue (Grouped by Section) *</label>
+            <label htmlFor="bookId">Select Book to Issue *</label>
             {loading ? (
-              <p className="text-muted">Loading available books from all sections...</p>
+              <p className="text-muted">Loading available books...</p>
             ) : books.length === 0 ? (
-              <p className="text-danger">No books available in library catalog. Please add books first.</p>
+              <p className="text-danger">No books available in catalog.</p>
             ) : (
               <select
                 id="bookId"
@@ -160,28 +158,16 @@ const IssueBook = ({ setActiveTab }) => {
                 onChange={handleChange}
                 required
               >
-                <option value="">-- Choose a book to issue (64 books across 8 sections) --</option>
-                {/* Group books by section */}
-                {Object.entries(
-                  books.reduce((acc, book) => {
-                    const sec = book.section || book.category || 'General';
-                    if (!acc[sec]) acc[sec] = [];
-                    acc[sec].push(book);
-                    return acc;
-                  }, {})
-                ).sort(([a], [b]) => a.localeCompare(b)).map(([secName, secBooks]) => (
-                  <optgroup key={secName} label={`📁 SECTION: ${secName} (${secBooks.length} titles)`}>
-                    {secBooks.map((b) => (
-                      <option
-                        key={b._id}
-                        value={b._id}
-                        disabled={b.availableQuantity <= 0}
-                      >
-                        {b.title} — by {b.author} [Avail: {b.availableQuantity}/{b.quantity}]
-                        {b.availableQuantity <= 0 ? ' (OUT OF STOCK)' : ''}
-                      </option>
-                    ))}
-                  </optgroup>
+                <option value="">-- Choose a book from catalog --</option>
+                {books.map((b) => (
+                  <option
+                    key={b._id}
+                    value={b._id}
+                    disabled={b.availableQuantity <= 0}
+                  >
+                    {b.title} — {b.author} [{b.category || b.section}] (Available: {b.availableQuantity}/{b.quantity})
+                    {b.availableQuantity <= 0 ? ' [OUT OF STOCK]' : ''}
+                  </option>
                 ))}
               </select>
             )}
@@ -193,19 +179,14 @@ const IssueBook = ({ setActiveTab }) => {
                 <strong>Selected Book:</strong> {selectedBook.title}
               </div>
               <div>
-                <strong>Section:</strong> <span className="badge badge-category">{selectedBook.section || selectedBook.category}</span>
+                <strong>Category:</strong> <span className="badge badge-category">{selectedBook.category || selectedBook.section}</span>
               </div>
               <div className="mt-1">
-                <strong>Author:</strong> {selectedBook.author} | <strong>ISBN:</strong> {selectedBook.ISBN}
+                <strong>Author:</strong> {selectedBook.author} | <strong>ISBN:</strong> {selectedBook.isbn || selectedBook.ISBN}
               </div>
               <div className="mt-1">
-                <strong>Available Stock:</strong> {selectedBook.availableQuantity} of {selectedBook.quantity} copies
+                <strong>Stock Status:</strong> {selectedBook.availableQuantity} of {selectedBook.quantity} copies available
               </div>
-              {selectedBook.availableQuantity <= 0 && (
-                <div className="text-danger mt-1">
-                  ⚠️ This book cannot be issued right now because all copies are currently checked out.
-                </div>
-              )}
             </div>
           )}
 

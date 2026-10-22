@@ -1,44 +1,20 @@
 const BorrowRecord = require('../models/BorrowRecord');
 const Book = require('../models/Book');
 
-const normalizeBook = (book) => {
-  if (!book) return null;
-  const b = book.toObject ? book.toObject() : book;
-  const sectionVal = b.section || b.category || 'General';
-  return {
-    ...b,
-    section: sectionVal,
-    category: sectionVal,
-    ISBN: b.ISBN || b.isbn || '',
-    quantity: b.quantity !== undefined ? b.quantity : (b.totalCopies !== undefined ? b.totalCopies : 1),
-    availableQuantity: b.availableQuantity !== undefined ? b.availableQuantity : (b.availableCopies !== undefined ? b.availableCopies : (b.quantity || b.totalCopies || 1))
-  };
-};
-
-// @desc    Get all borrowing records
-// @route   GET /api/borrow
+// Get all borrow records
 exports.getAllBorrowRecords = async (req, res) => {
   try {
     const records = await BorrowRecord.find()
-      .populate('bookId', 'title author ISBN isbn category section quantity totalCopies availableQuantity availableCopies')
+      .populate('bookId')
       .sort({ createdAt: -1 });
 
-    const normalizedRecords = records.map((r) => {
-      const obj = r.toObject();
-      if (obj.bookId) {
-        obj.bookId = normalizeBook(obj.bookId);
-      }
-      return obj;
-    });
-
-    res.status(200).json({ success: true, count: normalizedRecords.length, data: normalizedRecords });
+    res.status(200).json({ success: true, count: records.length, data: records });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Issue a book to a student
-// @route   POST /api/borrow
+// Issue a book to a student
 exports.issueBook = async (req, res) => {
   try {
     const { studentName, studentRollNumber, bookId, issueDate } = req.body;
@@ -50,18 +26,13 @@ exports.issueBook = async (req, res) => {
       });
     }
 
-    // Find the book
     const book = await Book.findById(bookId);
     if (!book) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    const currentAvail = book.availableQuantity !== undefined
-      ? book.availableQuantity
-      : (book.availableCopies !== undefined ? book.availableCopies : 0);
-
     // Check availability
-    if (currentAvail <= 0) {
+    if (book.availableQuantity <= 0) {
       return res.status(400).json({
         success: false,
         message: `Sorry, "${book.title}" is currently out of stock (0 available copies)`
@@ -69,9 +40,7 @@ exports.issueBook = async (req, res) => {
     }
 
     // Reduce available quantity
-    const newAvail = currentAvail - 1;
-    book.availableQuantity = newAvail;
-    book.availableCopies = newAvail;
+    book.availableQuantity -= 1;
     await book.save();
 
     // Create borrow record
@@ -83,28 +52,19 @@ exports.issueBook = async (req, res) => {
       status: 'Issued'
     });
 
-    const populatedRecord = await BorrowRecord.findById(record._id).populate(
-      'bookId',
-      'title author ISBN isbn category section quantity totalCopies availableQuantity availableCopies'
-    );
-
-    const result = populatedRecord.toObject();
-    if (result.bookId) {
-      result.bookId = normalizeBook(result.bookId);
-    }
+    const populatedRecord = await BorrowRecord.findById(record._id).populate('bookId');
 
     res.status(201).json({
       success: true,
-      message: `Book "${book.title}" successfully issued to ${studentName}`,
-      data: result
+      message: `Book "${book.title}" issued successfully to ${studentName}`,
+      data: populatedRecord
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Return an issued book
-// @route   PUT /api/borrow/:id/return
+// Return an issued book
 exports.returnBook = async (req, res) => {
   try {
     const record = await BorrowRecord.findById(req.params.id);
@@ -113,7 +73,6 @@ exports.returnBook = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Borrow record not found' });
     }
 
-    // Prevent returning the same book twice
     if (record.status === 'Returned') {
       return res.status(400).json({
         success: false,
@@ -121,42 +80,23 @@ exports.returnBook = async (req, res) => {
       });
     }
 
-    // Increase available quantity on the book
+    // Increase available copies back in stock
     const book = await Book.findById(record.bookId);
-    if (book) {
-      const maxQty = book.quantity !== undefined
-        ? book.quantity
-        : (book.totalCopies !== undefined ? book.totalCopies : 100);
-
-      const currentAvail = book.availableQuantity !== undefined
-        ? book.availableQuantity
-        : (book.availableCopies !== undefined ? book.availableCopies : 0);
-
-      if (currentAvail < maxQty) {
-        book.availableQuantity = currentAvail + 1;
-        book.availableCopies = currentAvail + 1;
-        await book.save();
-      }
+    if (book && book.availableQuantity < book.quantity) {
+      book.availableQuantity += 1;
+      await book.save();
     }
 
     record.status = 'Returned';
     record.returnDate = new Date();
     await record.save();
 
-    const populatedRecord = await BorrowRecord.findById(record._id).populate(
-      'bookId',
-      'title author ISBN isbn category section quantity totalCopies availableQuantity availableCopies'
-    );
-
-    const result = populatedRecord.toObject();
-    if (result.bookId) {
-      result.bookId = normalizeBook(result.bookId);
-    }
+    const populatedRecord = await BorrowRecord.findById(record._id).populate('bookId');
 
     res.status(200).json({
       success: true,
-      message: 'Book returned successfully',
-      data: result
+      message: 'Book returned successfully and stock updated',
+      data: populatedRecord
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

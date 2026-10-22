@@ -12,52 +12,43 @@ const bookSchema = new mongoose.Schema(
       required: [true, 'Author name is required'],
       trim: true
     },
-    ISBN: {
-      type: String,
-      trim: true
-    },
     isbn: {
       type: String,
+      required: [true, 'ISBN is required'],
       trim: true
     },
     category: {
       type: String,
-      required: [true, 'Category / Section is required'],
-      trim: true
-    },
-    section: {
-      type: String,
+      required: [true, 'Category is required'],
       trim: true
     },
     quantity: {
       type: Number,
+      required: [true, 'Quantity is required'],
       min: [1, 'Quantity must be at least 1']
-    },
-    totalCopies: {
-      type: Number
     },
     availableQuantity: {
       type: Number,
+      default: function () {
+        return this.quantity;
+      },
       min: [0, 'Available quantity cannot be negative']
-    },
-    availableCopies: {
-      type: Number
     }
   },
   {
     timestamps: true,
-    strict: false,
-    toJSON: {
-      transform: function (doc, ret) {
-        ret.section = ret.section || ret.category || 'General';
-        ret.category = ret.section || ret.category || 'General';
-        ret.ISBN = ret.ISBN || ret.isbn || '';
-        ret.quantity = ret.quantity !== undefined ? ret.quantity : (ret.totalCopies || 1);
-        ret.availableQuantity = ret.availableQuantity !== undefined ? ret.availableQuantity : (ret.availableCopies !== undefined ? ret.availableCopies : ret.quantity);
-        return ret;
-      }
-    }
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+// Virtual aliases so both book.isbn and book.ISBN, book.category and book.section work
+bookSchema.virtual('ISBN').get(function () {
+  return this.isbn;
+});
+
+bookSchema.virtual('section').get(function () {
+  return this.category;
+});
 
 module.exports = mongoose.model('Book', bookSchema);

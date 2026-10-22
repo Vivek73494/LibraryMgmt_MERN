@@ -171,7 +171,7 @@ const IssuedBooks = ({ setActiveTab }) => {
                         <span className="text-muted">[Deleted Book]</span>
                       )}
                     </td>
-                    <td><code>{record.bookId?.ISBN || '—'}</code></td>
+                    <td><code>{record.bookId?.isbn || record.bookId?.ISBN || '—'}</code></td>
                     <td>{formatDate(record.issueDate)}</td>
                     <td>{formatDate(record.returnDate)}</td>
                     <td>

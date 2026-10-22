@@ -3,7 +3,6 @@ import React from 'react';
 const Navbar = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'books', label: 'Manage Books', icon: '📚' },
     { id: 'issue', label: 'Issue Book', icon: '📤' },
     { id: 'issued', label: 'Issued Records', icon: '📋' },
   ];
@@ -15,7 +14,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
           <span className="brand-icon">📚</span>
           <div className="brand-text">
             <span className="brand-title">Library Management</span>
-            <span className="brand-subtitle">MERN Stack System</span>
+            <span className="brand-subtitle">System</span>
           </div>
         </div>
 
